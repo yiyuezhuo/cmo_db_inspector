@@ -92,31 +92,29 @@ class SelectorTab:
         # self.gr_df_select_output:set = set()
     
     def build(self):
-        with gr.Tab("Selector"):
-            with gr.Row():
-                with gr.Column():
-                    with gr.Row():
-                        self.cmo_dababase_dropdown = gr.Dropdown([p.name for p in self.db_list], label="CMO Database", value=self.default_db.name)
-                        self.type_dropdown = gr.Dropdown(list(table_info_map), label="Type", value="Aircraft")
-                    with gr.Row():
-                        # gr.Text("F/A", label="Class")
-                        self.class_text = gr.Text("initial class", label="Class") # The value will be override by load event and trigger a change handler
-                    with gr.Row().style(equal_height=True):
-                        #with gr.Column(min_width=100):
-                        self.first_page_button = gr.Button("First", elem_id="first-page-button").style(size="sm") # gr.Button("First Page")
-                        self.prev_page_button = gr.Button("Prev", elem_id="prev-page-button").style(size="sm") # gr.Button("Prev Page")
-                        with gr.Column(min_width=100):
-                            self.page_index_number = gr.Number(1, label="Page Index")
-                        with gr.Column(min_width=100):
-                            self.page_count_number = gr.Number(1, label="Page Count")
-                        self.next_page_button = gr.Button("Next", elem_id="next-page-button").style(size="sm") # gr.Button("Next Page")
-                        self.end_page_button = gr.Button("End", elem_id="end-page-button").style(size="sm") # gr.Button("End Page")
-                with gr.Column():
-                    self.gr_df = gr.DataFrame([[]], interactive=False) #, datatype=["str", "str"])
-                    # self.gr_df = gr.DataFrame([[]], headers=["ID", "Name", "Comments", "Country/Role", "Year/Generation"]) #, datatype=["str", "str"])
-                    # self.gr_df = gr.DataFrame([[]])#, headers=["ID", "Name"]), datatype=["str", "str"])
+        with gr.Row():
+            with gr.Column():
+                with gr.Row():
+                    self.cmo_dababase_dropdown = gr.Dropdown([p.name for p in self.db_list], label="CMO Database", value=self.default_db.name)
+                    self.type_dropdown = gr.Dropdown(list(table_info_map), label="Type", value="Aircraft")
+                with gr.Row():
+                    # gr.Text("F/A", label="Class")
+                    self.class_text = gr.Text("initial class", label="Class") # The value will be override by load event and trigger a change handler
+                with gr.Row().style(equal_height=True):
+                    #with gr.Column(min_width=100):
+                    self.first_page_button = gr.Button("First", elem_id="first-page-button").style(size="sm") # gr.Button("First Page")
+                    self.prev_page_button = gr.Button("Prev", elem_id="prev-page-button").style(size="sm") # gr.Button("Prev Page")
+                    with gr.Column(min_width=100):
+                        self.page_index_number = gr.Number(1, label="Page Index")
+                    with gr.Column(min_width=100):
+                        self.page_count_number = gr.Number(1, label="Page Count")
+                    self.next_page_button = gr.Button("Next", elem_id="next-page-button").style(size="sm") # gr.Button("Next Page")
+                    self.end_page_button = gr.Button("End", elem_id="end-page-button").style(size="sm") # gr.Button("End Page")
+            with gr.Column():
+                self.gr_df = gr.DataFrame([[]], interactive=False) #, datatype=["str", "str"])
+                # self.gr_df = gr.DataFrame([[]], headers=["ID", "Name", "Comments", "Country/Role", "Year/Generation"]) #, datatype=["str", "str"])
+                # self.gr_df = gr.DataFrame([[]])#, headers=["ID", "Name"]), datatype=["str", "str"])
             
-        
         return self
     
     def bind(self, gr_df_select_output: set):

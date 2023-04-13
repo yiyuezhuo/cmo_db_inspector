@@ -1,7 +1,7 @@
 
 import gradio as gr
 from .interfaces import DbPathProvider
-from .utils import connect, text_grid, tags
+from .utils import connect, text_grid, tags, add_text_rows
 
 info_map:dict[str, str] = {}
 
@@ -51,9 +51,45 @@ class AircraftTab:
         self.db_path_provider = db_path_provider
         self.name_to_component: dict[str, gr.components.Component] = {}
 
+    row_name_list = [
+        ["Type", "DamagePoints"],
+        ["Agility", "ClimbRate"],
+        ["Length", "Span", "Height"],
+        ["WeightEmpty", "WeightMax"]
+    ]
+
+    tags_command_map = {
+        "Loadouts": "SELECT Name FROM DataAircraftLoadouts INNER JOIN DataLoadout ON DataAircraftLoadouts.ComponentID = DataLoadout.ID WHERE DataAircraftLoadouts.ID = ?",
+        "Sensors": "SELECT DataSensor.Name FROM DataAircraftSensors INNER JOIN DataSensor ON ComponentID=DataSensor.ID WHERE DataAircraftSensors.ID = ?",
+        "Comms": "SELECT Name FROM DataAircraftComms INNER JOIN DataComm ON ComponentID = DataComm.ID WHERE DataAircraftComms.ID= ?",
+        "Codes": "SELECT Description FROM DataAircraftCodes INNER JOIN EnumAircraftCode ON DataAircraftCodes.CodeID=EnumAircraftCode.ID WHERE DataAircraftCodes.ID = ?"
+    }
+
     def build(self):
-        for name in ["Loadouts", "Sensors", "Comms", "Codes"]:
-            self.name_to_component[name] = tags([], label=name)
+        
+        with gr.Row():
+            with gr.Column():
+                
+                self.name_to_component["Name"] = gr.Text("", show_label=False)
+
+                for name_list in self.row_name_list:
+                    add_text_rows(self.name_to_component, name_list)
+
+                with gr.Row():
+                    gr.Button("Send to Radar Equation")
+                
+            with gr.Column():
+                headers_map = {
+                    "Signatures": ["Description", "Front", "Side", "Rear", "Top"],
+                    "Performances": ["AltitudeBand", "Throttle", "Speed", "AltitudeMin", "AltitudeMax", "Consumption"]
+                }
+
+                for name, headers in headers_map.items():
+                    self.name_to_component[name] = gr.DataFrame([[]], headers=headers, label=name)
+
+                for name in ["Sensors", "Comms", "Codes", "Loadouts"]:
+                    self.name_to_component[name] = tags([], label=name)
+
         return self
 
     def bind(self):
@@ -62,15 +98,40 @@ class AircraftTab:
     def updates(self, data, _id):
         _id = int(_id)
 
-        command_map = {
-            "Loadouts": "SELECT Name FROM DataAircraftLoadouts INNER JOIN DataLoadout ON DataAircraftLoadouts.ComponentID = DataLoadout.ID WHERE DataAircraftLoadouts.ID = ?",
-            "Sensors": "SELECT DataSensor.Name FROM DataAircraftSensors INNER JOIN DataSensor ON ComponentID=DataSensor.ID WHERE DataAircraftSensors.ID = ?",
-            "Comms": "SELECT Name FROM DataAircraftComms INNER JOIN DataComm ON ComponentID = DataComm.ID WHERE DataAircraftComms.ID= ?",
-            "Codes": "SELECT Description FROM DataAircraftCodes INNER JOIN EnumAircraftCode ON DataAircraftCodes.CodeID=EnumAircraftCode.ID WHERE DataAircraftCodes.ID = ?"
-        }
         rd = {}
+
         with connect(self.db_path_provider.get_db_path(data)) as conn:
-            for name, command in command_map.items():
+
+            cur = conn.execute(
+                "SELECT DataAircraft.ID, EnumAircraftType.Description as Type, Name, Comments, EnumOperatorCountry.Description as Country, YearCommissioned, Agility, ClimbRate, DamagePoints, Length, Span, Height, WeightEmpty, WeightMax "
+                "FROM DataAircraft INNER JOIN EnumAircraftType ON Type = EnumAircraftType.ID INNER JOIN EnumOperatorCountry ON OperatorCountry=EnumOperatorCountry.ID "
+                "WHERE DataAircraft.ID = ?",
+                (_id,))
+            res = cur.fetchone()
+            d = {k[0]: v for k, v in zip(cur.description, res)}
+            comments = "" if d["Comments"] == "-" else f"({d['Comments']})"
+            name = f"#{d['ID']} {d['Name']} {comments} ({d['Country']}, {d['YearCommissioned']})"
+
+            rd[self.name_to_component["Name"]] = name
+            for name_list in self.row_name_list:
+                for name in name_list:
+                    rd[self.name_to_component[name]] = d[name]
+
+            cur = conn.execute(
+                "SELECT Description, Front, Side, Rear, Top FROM DataAircraftSignatures INNER JOIN EnumSignatureType ON Type=EnumSignatureType.ID "
+                "WHERE DataAircraftSignatures.ID = ?",
+                (_id,))
+            rd[self.name_to_component["Signatures"]] = cur.fetchall()
+
+            cur = conn.execute("SELECT ComponentID FROM DataAircraftPropulsion WHERE DataAircraftPropulsion.ID = ?", (_id,))
+            component_id = cur.fetchone()[0]
+            cur = conn.execute(
+                "SELECT AltitudeBand, Throttle, Speed, AltitudeMin, AltitudeMax, Consumption FROM DataPropulsionPerformance "
+                "WHERE ID = ?", 
+                (component_id,))
+            rd[self.name_to_component["Performances"]] = cur.fetchall()
+
+            for name, command in self.tags_command_map.items():
                 cur = conn.execute(command, (_id,))
                 res = cur.fetchall()
 

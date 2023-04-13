@@ -62,4 +62,7 @@ def merge_update(*f_list):
         return rd
     return g
 
-        
+def add_text_rows(binding: dict, name_list: list[str]):
+    with gr.Row():
+        for name in name_list:
+            binding[name] = gr.Text("", label=name)
