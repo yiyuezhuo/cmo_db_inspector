@@ -100,7 +100,7 @@ class SelectorTab:
                         self.type_dropdown = gr.Dropdown(list(table_info_map), label="Type", value="Aircraft")
                     with gr.Row():
                         # gr.Text("F/A", label="Class")
-                        self.class_text = gr.Text(label="Class")
+                        self.class_text = gr.Text("initial class", label="Class") # The value will be override by load event and trigger a change handler
                     with gr.Row().style(equal_height=True):
                         #with gr.Column(min_width=100):
                         self.first_page_button = gr.Button("First", elem_id="first-page-button").style(size="sm") # gr.Button("First Page")
@@ -112,7 +112,7 @@ class SelectorTab:
                         self.next_page_button = gr.Button("Next", elem_id="next-page-button").style(size="sm") # gr.Button("Next Page")
                         self.end_page_button = gr.Button("End", elem_id="end-page-button").style(size="sm") # gr.Button("End Page")
                 with gr.Column():
-                    self.gr_df = gr.DataFrame([[]]) #, datatype=["str", "str"])
+                    self.gr_df = gr.DataFrame([[]], interactive=False) #, datatype=["str", "str"])
                     # self.gr_df = gr.DataFrame([[]], headers=["ID", "Name", "Comments", "Country/Role", "Year/Generation"]) #, datatype=["str", "str"])
                     # self.gr_df = gr.DataFrame([[]])#, headers=["ID", "Name"]), datatype=["str", "str"])
             
@@ -128,6 +128,15 @@ class SelectorTab:
         self.prev_page_button.click(lambda data: self.update(data, page_offset=-1), inputs, outputs)
         self.next_page_button.click(lambda data: self.update(data, page_offset=1), inputs, outputs)
         self.end_page_button.click(lambda data: self.update(data, page_target=-1), inputs, outputs)
+
+        for component in [self.type_dropdown, self.cmo_dababase_dropdown, self.class_text]:
+            component.change(lambda data: self.update(data), inputs, outputs)
+        
+        """
+        self.type_dropdown.change(lambda data: self.update(data), inputs, outputs)
+        self.cmo_dababase_dropdown.change(lambda data: self.update(data), inputs, outputs)
+        self.class_text.change(lambda data: self.update(data), inputs, outputs)
+        """
 
         self.gr_df.select(self.select, {self.gr_df, self.type_dropdown, self.cmo_dababase_dropdown}, gr_df_select_output)
 
@@ -161,12 +170,6 @@ class SelectorTab:
         ret = {component: gr.update() for component in self.gr_df_select_output}
         if event.return_update is not None:
             ret.update(event.return_update(data, _id))
-        
-        # self.gr_df_select_output.clear()
-        # self.gr_df_select_output.update(event.outputs)
-
-        # print(f"ret={ret}, len={len(ret)}")
-        # print(f"self.gr_df_select_output={self.gr_df_select_output}, len={len(self.gr_df_select_output)}")
 
         return ret
     
@@ -184,9 +187,12 @@ class SelectorTab:
             page_count = math.ceil(n / self.row_per_page)
             current_page_index = self.get_current_page_index(data)
 
-            if page_offset is not None:
-                page_target = current_page_index + page_offset
+            if page_offset is None and page_target is None:
+                page_offset = 0
 
+            if page_offset is not None and page_target is None:
+                page_target = current_page_index + page_offset
+            
             if page_target is not None:
                 if page_target < 0:
                     page_target = page_count + page_target + 1

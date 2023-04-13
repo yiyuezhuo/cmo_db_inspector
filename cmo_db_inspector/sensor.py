@@ -4,7 +4,8 @@ import sqlite3
 from typing import Protocol
 import gradio as gr
 
-from .utils import connect, chunks
+from .utils import connect, text_grid
+from .interfaces import DbPathProvider
 
 unit_map = {"":1, "K":1_000, "M": 1_000_000, "G": 1_000_000_000}
 hz_map = {
@@ -42,25 +43,11 @@ def extract_Hz_value(s):
     left, right, unit = re.findall(r"(\d+)-(\d+) (K|M|G)?Hz", s)[0]
     return (int(left) + int(right)) / 2 * unit_map[unit]
 
-"""
-def split_data(headers, values):
-    for section_idx, section_config in enumerate(section_arr):
-        left = section_arr[section_idx][0]
-        right = section_arr[section_idx+1][0] if section_idx + 1 < len(section_arr) else None
-        yield section_config[1], headers[left:right], values[left:right]
-"""
 def split_data(*args):
     for section_idx, section_config in enumerate(section_arr):
         left = section_arr[section_idx][0]
         right = section_arr[section_idx+1][0] if section_idx + 1 < len(section_arr) else None
         yield section_config[1], *(arg[left:right] for arg in args)
-
-
-class DbPathProvider(Protocol):
-    def get_db_path(self, data) -> str:
-        ...
-    def get_init_db_path(self) -> str:
-        ...
 
 class SensorRawTab:
     def __init__(self, db_path_provider: DbPathProvider, elements_per_row = 5):
@@ -76,14 +63,17 @@ class SensorRawTab:
         headers = [r[1] for r in res]
         types = [r[2] for r in res]
             
-        for section_name, indexs in split_data(headers):
+        for section_name, indexes in split_data(headers):
             with gr.Accordion(section_name):
+                self.name_to_component.update(text_grid(indexes, self.elements_per_row, info_map))
+                """
                 for chunk in chunks(list(indexs), self.elements_per_row):
                     with gr.Row():
                         for index in chunk:
                             info = info_map.get(index, None)
                             text = gr.Text("", label=index, info=info)
                             self.name_to_component[index] = text
+                """
         
         return self
     
