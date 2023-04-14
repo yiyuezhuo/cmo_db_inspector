@@ -3,8 +3,9 @@ import pandas as pd
 import sqlite3
 from typing import Protocol
 import gradio as gr
+from itertools import chain
 
-from .utils import connect, text_grid
+from .utils import connect, text_grid, add_text_rows, tags
 from .interfaces import DbPathProvider
 
 unit_map = {"":1, "K":1_000, "M": 1_000_000, "G": 1_000_000_000}
@@ -18,8 +19,8 @@ hz_map = {
 section_arr = [
     [0, "General"],
     [14, "Misc"],
-    [27, "Radar"],
-    [35, "Fire Control"],
+    [27, "Radar (Search & Track)"],
+    [35, "Radar (Fire Control)"],
     [43, "ESM"],
     [46, "ECM"],
     [52, "Sonar"],
@@ -66,14 +67,6 @@ class SensorRawTab:
         for section_name, indexes in split_data(headers):
             with gr.Accordion(section_name):
                 self.name_to_component.update(text_grid(indexes, self.elements_per_row, info_map))
-                """
-                for chunk in chunks(list(indexs), self.elements_per_row):
-                    with gr.Row():
-                        for index in chunk:
-                            info = info_map.get(index, None)
-                            text = gr.Text("", label=index, info=info)
-                            self.name_to_component[index] = text
-                """
         
         return self
     
@@ -102,6 +95,113 @@ class SensorRawTab:
 
     # def transform_returns(self, returns: dict):
     #    returns.update(self.updates())
+
+class RadarSearchTrack:
+    def __init__(self, db_path_provider: DbPathProvider):
+        self.db_path_provider = db_path_provider
+        self.name_to_component: dict[str, gr.components.Component] = {}
+
+    row_name_list_left = [
+        ["Role"],
+        ["Range", "Altitude", "Altitude_ASL"],
+        ["ScanInterval", "DirectionFindingAccuracy"],
+        ["ResolutionRange", "ResolutionHeight", "ResolutionAngle"],
+        ["MaxContactsAir", "MaxContactsSurface", "MaxContactsSubmarine"]
+    ]
+
+    row_name_list_right = [
+        ["RadarHorizontalBeamwidth", "RadarVerticalBeamwidth", "RadarSystemNoiseLevel"],
+        ["RadarProcessingGainLoss", "RadarPeakPower", "RadarPulseWidth"],
+        ["RadarBlindTime", "RadarPRF"]
+    ]
+
+    tags_command_map = {
+        "Capabilities": 
+            "SELECT Description FROM DataSensorCapabilities "
+            "INNER JOIN EnumSensorCapability ON CodeID = EnumSensorCapability.ID "
+            "WHERE DataSensorCapabilities.ID = ?",
+
+        "FrequencySearchAndTrack": 
+            "SELECT Description FROM DataSensorFrequencySearchAndTrack "
+            "INNER JOIN EnumSensorFrequency ON Frequency=EnumSensorFrequency.ID "
+            "WHERE DataSensorFrequencySearchAndTrack.ID = ?",     
+               
+        "Codes": 
+            "SELECT Description FROM DataSensorCodes "
+            "INNER JOIN EnumSensorCode ON CodeID = EnumSensorCode.ID "
+            "WHERE DataSensorCodes.ID = ?"
+    }
+
+    def build(self):
+        with gr.Row():
+            with gr.Column():
+                self.name_to_component["Name"] = gr.Text("", show_label=False)
+
+                for name_list in self.row_name_list_left:
+                    add_text_rows(self.name_to_component, name_list)
+
+                with gr.Row():
+                    gr.Button("Send to Radar Equatiobn")
+
+            with gr.Column():
+                for name_list in self.row_name_list_right:
+                    add_text_rows(self.name_to_component, name_list)
+
+                for name in ["Capabilities", "FrequencySearchAndTrack", "Codes"]:
+                    self.name_to_component[name] = tags([], label=name)
+
+        
+        return self
+
+    def updates(self, data, _id):
+        _id = int(_id)
+
+        with connect(self.db_path_provider.get_db_path(data)) as conn:
+            cur = conn.execute(
+                "SELECT DataSensor.ID, Name, Comments, EnumSensorType.Description AS Type, "
+                "EnumSensorRole.Description as Role, EnumSensorGeneration.Description AS Generation, "
+                "RangeMin, RangeMax, AltitudeMin, AltitudeMax, AltitudeMin_ASL, AltitudeMax_ASL, ScanInterval, "
+                "ResolutionRange, ResolutionHeight, ResolutionAngle, DirectionFindingAccuracy, "
+                "MaxContactsAir, MaxContactsSurface, MaxContactsSubmarine, "
+                "RadarHorizontalBeamwidth, RadarVerticalBeamwidth, RadarSystemNoiseLevel, RadarProcessingGainLoss, "
+                "RadarPeakPower, RadarPulseWidth, RadarBlindTime, RadarPRF "
+                "FROM DataSensor "
+                "INNER JOIN EnumSensorRole ON Role=EnumSensorRole.ID "
+                "INNER JOIN EnumSensorType ON Type=EnumSensorType.ID "
+                "INNER JOIN EnumSensorGeneration ON Generation=EnumSensorGeneration.ID "
+                "WHERE DataSensor.ID = ?",
+                (_id,))
+            res = cur.fetchone()
+
+            # print(f"res={res}, _id={_id}")
+            d = {k[0]: v for k, v in zip(cur.description, res)}
+            comments = "" if d["Comments"] == "-" else f"({d['Comments']})"
+            name = f"#{d['ID']} {d['Name']} ({d['Type']}, {d['Generation']})"
+
+            _rd = {
+                "Name": name,
+                "Range": f"{round(d['RangeMin'], 2)} nmi - {round(d['RangeMax'], 2)} nmi",
+                "Altitude": f"{round(d['AltitudeMin'], 2)} m - {round(d['AltitudeMax'], 2)} m",
+                "Altitude_ASL": f"{round(d['AltitudeMin_ASL'], 2)} m - {round(d['AltitudeMax_ASL'], 2)} m"
+            }
+
+            for name_list in chain(self.row_name_list_left, self.row_name_list_right):
+                for name in name_list:
+                    if name not in _rd:
+                        _rd[name] = d[name]
+
+            for name, command in self.tags_command_map.items():
+                cur = conn.execute(command, (_id,))
+                res = cur.fetchall()
+                rl = [r[0] for r in res]
+                _rd[name] = gr.update(value=rl, choices=rl)
+
+        return {self.name_to_component[name]: value for name, value in _rd.items()}
+
+    def register_outputs(self, outputs: set):
+        for component in self.name_to_component.values():
+            outputs.add(component)
+
 
 """
 def split_ser(ser, section):

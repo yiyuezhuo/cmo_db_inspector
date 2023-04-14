@@ -1,0 +1,19 @@
+[project]
+name = "cmo_db_inspector"
+version = "0.0.1"
+description = 'CMO Database Inspector, view data and test some quick modeling derivated from Harpoon and theory'
+readme = "readme.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "yiyuezhuo", email = "yiyuezhuo@gmail.com" },
+]
+
+dependencies = [
+  "gradio",
+]
+
+[project.urls]
+homepage = "https://github.com/yiyuezhuo/cmo_db_inspector"
+documentation = "https://github.com/yiyuezhuo/cmo_db_inspector"
+repository = "https://github.com/yiyuezhuo/cmo_db_inspector"
+changelog = "https://github.com/yiyuezhuo/cmo_db_inspector"

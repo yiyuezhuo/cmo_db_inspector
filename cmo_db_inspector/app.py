@@ -2,7 +2,7 @@
 import gradio as gr
 from pathlib import Path
 from .selector import SelectorTab
-from .sensor import SensorRawTab
+from .sensor import SensorRawTab, RadarSearchTrack
 from .aircraft import AircraftRawTab, AircraftTab
 from .utils import merge_update
 
@@ -27,7 +27,10 @@ class App:
                 self.sensor_raw_tab = SensorRawTab(self.selector_tab).build()
             with gr.TabItem("Aircraft", id=3):
                 self.aircraft_tab = AircraftTab(self.selector_tab).build()
-            
+            with gr.TabItem("Radar (Search & Track)", id=4):
+                self.radar_search_track = RadarSearchTrack(self.selector_tab).build()
+            with gr.TabItem("Radar Equation", id=5):
+                pass
 
         return self
 
@@ -37,10 +40,12 @@ class App:
         self.aircraft_tab.register_outputs(gr_df_select_output)
         self.aircraft_raw_tab.register_outputs(gr_df_select_output)
         self.sensor_raw_tab.register_outputs(gr_df_select_output)
+        self.radar_search_track.register_outputs(gr_df_select_output)
         
         # self.selector_tab.selected_events["Aircraft"].return_update = self.aircraft_raw_tab.updates
         self.selector_tab.selected_events["Aircraft"].return_update = merge_update(self.aircraft_tab.updates, self.aircraft_raw_tab.updates)
-        self.selector_tab.selected_events["Sensor"].return_update = self.sensor_raw_tab.updates
+        self.selector_tab.selected_events["Sensor"].return_update = merge_update(self.sensor_raw_tab.updates, self.radar_search_track.updates)
+        # self.selector_tab.selected_events["Sensor"].return_update = self.sensor_raw_tab.updates
 
         self.selector_tab.bind(gr_df_select_output)
         # self.sensor_raw_tab.bind()
