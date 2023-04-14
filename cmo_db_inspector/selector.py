@@ -89,10 +89,12 @@ class SelectorTab:
             "Sensor": SelectedEvent()
         }
 
+        """
         # For some reason, if `DataFrame` is selected once, the following update will trigger selected as well. So I made the workaround that if DataFrame is selected once, update will block one select "attemp".
         # TODO: send an issue to the Gradio repo about this and leave a url here.
         self.selected_any = False
         self.select_blocked = False
+        """
 
         # self.gr_df_select_output:set = set()
     
@@ -162,13 +164,15 @@ class SelectorTab:
     
     def select(self, data, evt: gr.SelectData):
         # evt.value
-        print(f"Select -> evt={evt}, evt.value={evt.value}")
+        # print(f"Select -> evt={evt}, evt.value={evt.value}")
 
+        """
         ## Strange `select` invoking workaround
         if self.select_blocked:
             print("Select blocked")
             self.select_blocked = False
             return {component: gr.update() for component in self.gr_df_select_output}
+        """
 
         self.selected_any = True
         ##
@@ -188,10 +192,12 @@ class SelectorTab:
         return ret
     
     def update(self, data, page_target=None, page_offset=None):
+        """
         ## Strange `select` invoking workaround
         if self.selected_any:
             self.select_blocked = True
         ##
+        """
 
         db_path = self.get_db_path(data)
 
@@ -228,7 +234,7 @@ class SelectorTab:
 
         df = pd.DataFrame(res, columns=table_info.headers)
         ret = {self.gr_df: df, self.page_index_number: page_index, self.page_count_number: page_count}
-        print(f"ret={ret}")
+        # print(f"ret={ret}")
         return ret
 
         # return {self.gr_df: res, self.page_index_number: page_index, self.page_count_number: page_count}
