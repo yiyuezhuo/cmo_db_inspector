@@ -16,6 +16,9 @@ class App:
     def __init__(self, cmo_db_root: Path):
         self.cmo_db_root = cmo_db_root
         self.demo = None
+        self.tabs = None
+        self.aircraft_tab_item = None
+        self.radar_search_track_tab_item = None
 
     def build(self):
         with gr.Tabs() as tabs:
@@ -25,12 +28,16 @@ class App:
                 self.aircraft_raw_tab = AircraftRawTab(self.selector_tab).build()
             with gr.TabItem("Sensor Raw", id=2):
                 self.sensor_raw_tab = SensorRawTab(self.selector_tab).build()
-            with gr.TabItem("Aircraft", id=3):
+            with gr.TabItem("Aircraft", id=3) as aircraft_tab_item:
                 self.aircraft_tab = AircraftTab(self.selector_tab).build()
-            with gr.TabItem("Radar (Search & Track)", id=4):
+            with gr.TabItem("Radar (Search & Track)", id=4) as radar_search_track_tab_item:
                 self.radar_search_track = RadarSearchTrack(self.selector_tab).build()
             with gr.TabItem("Radar Equation", id=5):
                 pass
+        
+        self.tabs = tabs
+        self.aircraft_tab_item = aircraft_tab_item
+        self.radar_search_track_tab_item = radar_search_track_tab_item
 
         return self
 
@@ -42,15 +49,25 @@ class App:
         self.sensor_raw_tab.register_outputs(gr_df_select_output)
         self.radar_search_track.register_outputs(gr_df_select_output)
         
-        # self.selector_tab.selected_events["Aircraft"].return_update = self.aircraft_raw_tab.updates
-        self.selector_tab.selected_events["Aircraft"].return_update = merge_update(self.aircraft_tab.updates, self.aircraft_raw_tab.updates)
-        self.selector_tab.selected_events["Sensor"].return_update = merge_update(self.sensor_raw_tab.updates, self.radar_search_track.updates)
-        # self.selector_tab.selected_events["Sensor"].return_update = self.sensor_raw_tab.updates
+        gr_df_select_output.add(self.tabs)
+        
+        self.selector_tab.selected_events["Aircraft"].return_update = merge_update(self.aircraft_tab.updates, self.aircraft_raw_tab.updates, self.switch_to_aircraft_tab)
+        self.selector_tab.selected_events["Sensor"].return_update = merge_update(self.sensor_raw_tab.updates, self.radar_search_track.updates, self.switch_to_specialized_sensor_tab)
+        # self.selector_tab.selected_events["Aircraft"].return_update = merge_update(self.aircraft_tab.updates, self.aircraft_raw_tab.updates)
+        # self.selector_tab.selected_events["Sensor"].return_update = merge_update(self.sensor_raw_tab.updates, self.radar_search_track.updates)
+
 
         self.selector_tab.bind(gr_df_select_output)
         # self.sensor_raw_tab.bind()
 
         return self
+    
+    def switch_to_aircraft_tab(self, data, _id):
+        return {self.tabs: gr.update(selected=self.aircraft_tab_item.id)}
+
+    def switch_to_specialized_sensor_tab(self, data, _id):
+        # TODO: Branch to ECM, FCR, ESM...
+        return {self.tabs: gr.update(selected=self.radar_search_track_tab_item.id)}
 
     def create(self):
         with gr.Blocks(analytics_enabled=False, theme=gr.themes.Default(), css=css) as demo:
