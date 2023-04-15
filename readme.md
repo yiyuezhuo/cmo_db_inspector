@@ -5,7 +5,7 @@ This app is inspired by [cmo-db](https://cmano-db.com/), however it's not open s
 - Expose more sensor attributes instead of being a poor clone cat similar to the original CMO data viewer, which just provide some obscure values such as `RangeMax`.
 - Do some simple calculations according to data. For example, it's insteresting to know a rough time when a sensor detects a target as target's signature is given. Also it would be useful to see the distance a missile is possible to hit its target (after the WarPlannar release) when target's auto-evading maneuver is considered.
 - Prodive some statistics in additional to indivisual data.
-- Interchangeability to Harpoon V.
+- Interchangeability with Harpoon.
 
 ## Radar
 
@@ -15,7 +15,7 @@ This app uses following radar equationb:
 
 $$
 \begin{align*}
-R_{max} &= \min(\R_{max,p},\R_{max,PRF}) \\
+R_{max} &= \min(R_{max,p},R_{max,PRF}) \\
 R_{max,p} &= \left( \frac{P_s G^2\lambda^2\sigma C_1}{P_{e_{min}}(4\pi)^3 C_2} \right)^{1/4} \\
 R_{max,RPF} &= \frac{c}{2PRF} \\
 G &= \frac{4 \pi}{\theta\phi} \\
@@ -77,3 +77,8 @@ APG-65 (LD/SD) Harpoon data:
 | Harpoon IV | 160   | 101    | 75    |   32       | 10       |
 | Harpoon V  | 160   | 112    | 80    |   32       | 10       |
 
+For data field explanation, see CMO's official `cmo-db-request` issue template, for example:
+
+https://github.com/PygmalionOfCyprus/cmo-db-requests/blob/main/.github/ISSUE_TEMPLATE/21_NEW-SENSOR.yml
+
+Due to current Gradio's limitation, double click on the same cell (i,j coordinates) in the table (even it's generated from another search), will not triiger click event. You can select its left or right cell to trigger the event.

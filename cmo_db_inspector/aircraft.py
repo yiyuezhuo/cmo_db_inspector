@@ -76,7 +76,7 @@ class AircraftTab:
                     add_text_rows(self.name_to_component, name_list)
 
                 with gr.Row():
-                    gr.Button("Send to Radar Equation")
+                    self.name_to_component["send_to_radar_equation"] = gr.Button("Send to Radar Equation")
                 
             with gr.Column():
                 headers_map = {

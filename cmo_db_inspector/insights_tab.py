@@ -14,7 +14,7 @@ country_map = {
     "France": "France"
 }
 
-country_color_discrete_map = {
+country_color_discrete_map = { # Text color may not work for some browser (For example, capitalized color name "Red" works for legend but not for point in Edge)
     "USA": "blue",
     "Russia": "green",
     "China": "red",
@@ -39,7 +39,8 @@ class InsightsTab:
                         value=["Comments", "Year", "Non-Jittering Agility"], label="Hover Info")
                     self.name_to_component["jittering"] = gr.Slider(0, 0.05, value=0.05, label="Jittering")
                     self.name_to_component["plot_agility_front"] = gr.Button("Plot")
-                    # self.name_to_component["plot_agility_front_major_power"] = gr.Button("Major Power")
+                with gr.Accordion("Sensor (RangeMax, RadarPeakPower, RadarProcessingGainLoss)"):
+                    self.name_to_component["plot_sensor_3d"] = gr.Button("Plot")
             with gr.Column(scale=4):
                 self.name_to_component["plot"] = gr.Plot(show_label=False)
 
@@ -51,6 +52,8 @@ class InsightsTab:
         self.name_to_component["plot_agility_front"].click(
             self.plot_agility_front, inputs, self.name_to_component["plot"])
 
+        self.name_to_component["plot_sensor_3d"].click(self.plot_sensor_3d, self.db_path_provider.get_db_inputs(), self.name_to_component["plot"])
+        
         return self
 
     def plot_agility_front(self, data):
@@ -82,12 +85,29 @@ class InsightsTab:
         if "Year" in hover_options:
             custom_data.append("YearCommissioned")
         if "Non-Jittering Agility" in hover_options:
-            custom_data.append("NonJitteringAgility")
+            if jittering > 0:
+                custom_data.append("NonJitteringAgility")
+            else:
+                custom_data.append("Agility")
 
-        hovertemplate = ",".join("%{customdata["+str(i)+"]}" for i in range(len(custom_data)))
+        hovertemplate = ",".join("%{customdata[" + str(i) + "]}" for i in range(len(custom_data)))
         # print(hovertemplate)
 
         fig = px.scatter(df, x="Agility", y="Front", custom_data=custom_data, color="Country", color_discrete_map=color_discrete_map)
         fig.update_traces(hovertemplate=hovertemplate)
+
+        return fig
+    
+    def plot_sensor_3d(self, data):
+        import plotly.express as px
+
+        df = pd.read_sql_query(
+            "SELECT * FROM DataSensor "
+            "INNER JOIN DataSensorCapabilities ON DataSensor.ID=DataSensorCapabilities.ID "
+            "WHERE DataSensorCapabilities.CodeID = 1001 AND DataSensor.Type = 2001", # 1001: Radar, 2001: Air Search
+            "sqlite:///" + str(self.db_path_provider.get_db_path(data)))
+        
+        fig = px.scatter_3d(df, x="RangeMax", y="RadarPeakPower", z="RadarProcessingGainLoss", custom_data=["Name"])
+        fig.update_traces(hovertemplate='%{customdata[0]}')
 
         return fig

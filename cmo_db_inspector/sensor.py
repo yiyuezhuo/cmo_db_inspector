@@ -9,7 +9,7 @@ from .utils import connect, text_grid, add_text_rows, tags, inv_db, nmi
 from .interfaces import DbPathProvider
 from .radar_equation import IRadar
 
-unit_map = {"":1, "K":1_000, "M": 1_000_000, "G": 1_000_000_000}
+unit_map = {"":1, "K":1_000, "M": 1_000_000, "G": 1_000_000_000, "T": 1_000_000_000_000, "P":1_000_000_000_000_000}
 hz_map = {
     "Visual Light": 300e12,
     "Near IR (0.75-8 µm)": 30e12,
@@ -144,17 +144,16 @@ class RadarSearchTrack:
                     add_text_rows(self.name_to_component, name_list)
 
                 with gr.Row():
-                    gr.Button("Send to Radar Equatiobn")
+                    self.name_to_component["send_to_radar_equation"] = gr.Button("Send to Radar Equatiobn")
 
             with gr.Column():
                 for name_list in self.row_name_list_right:
                     add_text_rows(self.name_to_component, name_list)
 
-                self.name_to_component["detection_range"] = gr.DataFrame([[]], label="Radar Equation", headers = ["dBsm"] + [str(n) for n in self.dbsm_arr])
+                self.name_to_component["detection_range"] = gr.DataFrame([[]], label="Radar Equation (Experimental)", headers = ["dBsm"] + [str(n) for n in self.dbsm_arr])
 
                 for name in ["Capabilities", "FrequencySearchAndTrack", "Codes"]:
                     self.name_to_component[name] = tags([], label=name)
-
         
         return self
 
@@ -204,12 +203,15 @@ class RadarSearchTrack:
                 _rd[name] = gr.update(value=rl, choices=rl)
 
             freq_s_l = rl_map["FrequencySearchAndTrack"]
-            radar_record = RadarRecord(d, freq_s_l)
-            ranges_m = [radar_record.detection_range(inv_db(dbsm)) for dbsm in self.dbsm_arr]
-            _rd["detection_range"] = [
-                ["km"] + [round(r / 1000, 1) for r in ranges_m],
-                ["nmi"] + [round(r / 1000 / nmi, 1) for r in ranges_m]
-            ]
+            try:
+                radar_record = RadarRecord(d, freq_s_l)
+                ranges_m = [radar_record.detection_range(inv_db(dbsm)) for dbsm in self.dbsm_arr]
+                _rd["detection_range"] = [
+                    ["km"] + [round(r / 1000, 1) for r in ranges_m],
+                    ["nmi"] + [round(r / 1000 / nmi, 1) for r in ranges_m]
+                ]
+            except ZeroDivisionError: # TODO: temp workaroud for non-search-radar, in fact non-search-radar should not update this tab but the switch is not implemented yet.
+                _rd["detection_range"] = gr.update()
 
         return {self.name_to_component[name]: value for name, value in _rd.items()}
 
