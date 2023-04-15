@@ -10,6 +10,7 @@ authors = [
 
 dependencies = [
   "gradio",
+  "plotly"
 ]
 
 [project.urls]

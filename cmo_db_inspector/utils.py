@@ -5,6 +5,7 @@ import gradio as gr
 from typing import Optional
 
 light_speed = 300_000_000 # 300_000_000 m/s
+nmi = 1.852 # 1 nmi = 1.852 km
 
 def inv_db(x):
     return 10 ** (x/10)

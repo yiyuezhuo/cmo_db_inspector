@@ -52,27 +52,7 @@ def pick_default_db(db_list: list[Path]):
 
 class SelectedEvent:
     def __init__(self):
-        # self.outputs = set()
         self.return_update = None
-        # self.returns = {}
-        # self.callbacks = {}
-
-    """
-    def register(self, component, update, callback):
-        self.outputs.append(component)
-        self.returns[component] = update
-        self.callbacks[component] = callback
-
-    def deregister(self, component):
-        self.outputs.remove(component)
-        del self.returns[component]
-        del self.callbacks[component]
-    
-
-    def process_callback(self, *args, **kwargs):
-        for callback in self.callbacks.values():
-            callback(*args, **kwargs)
-    """
 
 class SelectorTab:
     def __init__(self, cmo_db_root: Path, row_per_page=20):
@@ -88,15 +68,6 @@ class SelectorTab:
             "Aircraft": SelectedEvent(),
             "Sensor": SelectedEvent()
         }
-
-        """
-        # For some reason, if `DataFrame` is selected once, the following update will trigger selected as well. So I made the workaround that if DataFrame is selected once, update will block one select "attemp".
-        # TODO: send an issue to the Gradio repo about this and leave a url here.
-        self.selected_any = False
-        self.select_blocked = False
-        """
-
-        # self.gr_df_select_output:set = set()
     
     def build(self):
         with gr.Row():
@@ -136,12 +107,6 @@ class SelectorTab:
 
         for component in [self.type_dropdown, self.cmo_dababase_dropdown, self.class_text]:
             component.change(lambda data: self.update(data), inputs, outputs)
-        
-        """
-        self.type_dropdown.change(lambda data: self.update(data), inputs, outputs)
-        self.cmo_dababase_dropdown.change(lambda data: self.update(data), inputs, outputs)
-        self.class_text.change(lambda data: self.update(data), inputs, outputs)
-        """
 
         self.gr_df.select(self.select, {self.gr_df, self.type_dropdown, self.cmo_dababase_dropdown}, gr_df_select_output)
 
@@ -156,6 +121,9 @@ class SelectorTab:
     
     def get_init_db_path(self):
         return self.default_db
+    
+    def get_db_inputs(self):
+        return {self.cmo_dababase_dropdown}
             
     def get_current_page_index(self, data):
         page_index = data[self.page_index_number]
@@ -166,16 +134,7 @@ class SelectorTab:
         # evt.value
         # print(f"Select -> evt={evt}, evt.value={evt.value}")
 
-        """
-        ## Strange `select` invoking workaround
-        if self.select_blocked:
-            print("Select blocked")
-            self.select_blocked = False
-            return {component: gr.update() for component in self.gr_df_select_output}
-        """
-
         self.selected_any = True
-        ##
 
         i, _ = evt.index
 
@@ -192,12 +151,6 @@ class SelectorTab:
         return ret
     
     def update(self, data, page_target=None, page_offset=None):
-        """
-        ## Strange `select` invoking workaround
-        if self.selected_any:
-            self.select_blocked = True
-        ##
-        """
 
         db_path = self.get_db_path(data)
 

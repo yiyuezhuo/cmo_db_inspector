@@ -5,6 +5,8 @@ from .selector import SelectorTab
 from .sensor import SensorRawTab, RadarSearchTrack
 from .aircraft import AircraftRawTab, AircraftTab
 from .utils import merge_update
+from .references import ReferencesTab
+from .insights_tab import InsightsTab
 
 css = """
 #first-page-button, #prev-page-button, #next-page-button, #end-page-button {
@@ -34,7 +36,11 @@ class App:
                 self.radar_search_track = RadarSearchTrack(self.selector_tab).build()
             with gr.TabItem("Radar Equation", id=5):
                 pass
-        
+            with gr.TabItem("Insights", id=6):
+                self.insights_tab = InsightsTab(self.selector_tab).build()
+            with gr.TabItem("References", id=7):
+                self.references_tab = ReferencesTab().build()
+            
         self.tabs = tabs
         self.aircraft_tab_item = aircraft_tab_item
         self.radar_search_track_tab_item = radar_search_track_tab_item
@@ -59,6 +65,8 @@ class App:
 
         self.selector_tab.bind(gr_df_select_output)
         # self.sensor_raw_tab.bind()
+
+        self.insights_tab.bind()
 
         return self
     

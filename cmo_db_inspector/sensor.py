@@ -5,8 +5,9 @@ from typing import Protocol
 import gradio as gr
 from itertools import chain
 
-from .utils import connect, text_grid, add_text_rows, tags
+from .utils import connect, text_grid, add_text_rows, tags, inv_db, nmi
 from .interfaces import DbPathProvider
+from .radar_equation import IRadar
 
 unit_map = {"":1, "K":1_000, "M": 1_000_000, "G": 1_000_000_000}
 hz_map = {
@@ -132,6 +133,8 @@ class RadarSearchTrack:
             "WHERE DataSensorCodes.ID = ?"
     }
 
+    dbsm_arr = [-30, -20, -10, 0, 10, 20, 30]
+
     def build(self):
         with gr.Row():
             with gr.Column():
@@ -146,6 +149,8 @@ class RadarSearchTrack:
             with gr.Column():
                 for name_list in self.row_name_list_right:
                     add_text_rows(self.name_to_component, name_list)
+
+                self.name_to_component["detection_range"] = gr.DataFrame([[]], label="Radar Equation", headers = ["dBsm"] + [str(n) for n in self.dbsm_arr])
 
                 for name in ["Capabilities", "FrequencySearchAndTrack", "Codes"]:
                     self.name_to_component[name] = tags([], label=name)
@@ -190,11 +195,21 @@ class RadarSearchTrack:
                     if name not in _rd:
                         _rd[name] = d[name]
 
+            rl_map = {}
             for name, command in self.tags_command_map.items():
                 cur = conn.execute(command, (_id,))
                 res = cur.fetchall()
                 rl = [r[0] for r in res]
+                rl_map[name] = rl
                 _rd[name] = gr.update(value=rl, choices=rl)
+
+            freq_s_l = rl_map["FrequencySearchAndTrack"]
+            radar_record = RadarRecord(d, freq_s_l)
+            ranges_m = [radar_record.detection_range(inv_db(dbsm)) for dbsm in self.dbsm_arr]
+            _rd["detection_range"] = [
+                ["km"] + [round(r / 1000, 1) for r in ranges_m],
+                ["nmi"] + [round(r / 1000 / nmi, 1) for r in ranges_m]
+            ]
 
         return {self.name_to_component[name]: value for name, value in _rd.items()}
 
@@ -203,29 +218,40 @@ class RadarSearchTrack:
             outputs.add(component)
 
 
-"""
-def split_ser(ser, section):
-    for section_idx, section_config in enumerate(section_arr):
-        left = section_arr[section_idx][0]
-        right = section_arr[section_idx+1][0] if section_idx + 1 < len(section_arr) else None
-        yield section_config[1], ser.index[left:right], ser.values[left:right]
-
-class SensorTables:
-    def __init__(self, conn_str: str): # 'sqlite:///DB3K_499.db3'
-        self.conn_str = conn_str
-        self.reload_tables()
-
-    def reload_tables(self):
-        conn_str = self.conn_str
-
-        self.freq_desc = pd.read_sql_table("EnumSensorFrequency", conn_str)
-        self.sensor = pd.read_sql_table('DataSensor', conn_str, index_col="ID")
-        self.cap = pd.read_sql_table("DataSensorCapabilities", conn_str)
-        self.freq = pd.read_sql_table("DataSensorFrequencySearchAndTrack", conn_str)
-
-        df_freq_merged = self.df_freq.merge(self.df_freq_desc, left_on="Frequency", right_on="ID")
-        df_freq_merged["freq"] = df_freq_merged["Description"].map(extract_Hz_value)
-
-        self.df_freq_uniqued = df_freq_merged.groupby("ID_x").freq.min()
-
-"""
+class RadarRecord(IRadar):
+    def __init__(self, d: dict, freq_s_l: list[str], minimum_power=1e-15):
+        self.d = d
+        self._frequency = min(extract_Hz_value(s) for s in freq_s_l)
+        self._minimum_power = minimum_power
+    
+    @property
+    def peak_power(self):
+        return self.d["RadarPeakPower"]
+    
+    @property
+    def frequency(self):
+        return self._frequency
+    
+    @property
+    def minimum_power(self):
+        return self._minimum_power
+    
+    @property
+    def vertical_beamwidth(self):
+        return self.d["RadarVerticalBeamwidth"]
+    
+    @property
+    def horizontal_beamwidth(self):
+        return self.d["RadarHorizontalBeamwidth"]
+    
+    @property
+    def pulse_repetition_frequency(self):
+        return self.d["RadarPRF"]
+    
+    @property
+    def system_noise_level(self):
+        return self.d["RadarSystemNoiseLevel"]
+    
+    @property
+    def processing_gain_loss(self):
+        return self.d["RadarProcessingGainLoss"]
