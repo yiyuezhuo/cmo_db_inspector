@@ -1,6 +1,6 @@
 [project]
 name = "cmo_db_inspector"
-version = "0.0.1"
+version = "0.0.2"
 description = 'CMO Database Inspector, view data and test some quick modeling derivated from Harpoon and theory'
 readme = "readme.md"
 requires-python = ">=3.9"
@@ -10,7 +10,9 @@ authors = [
 
 dependencies = [
   "gradio",
-  "plotly"
+  "plotly",
+  "sqlalchemy<2.0.0",
+  "pandas<2.0.0"
 ]
 
 [project.urls]
