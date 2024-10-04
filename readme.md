@@ -7,6 +7,32 @@ This app is inspired by [cmo-db](https://cmano-db.com/), however it's not open s
 - Prodive some statistics in additional to indivisual data.
 - Interchangeability with Harpoon.
 
+## Usage
+
+### Deployment
+
+Clone and `pip install -e .` in a proper environment.
+
+Install dependencies in the environment
+
+```shell
+python -m cmo_db_inspector
+```
+
+```shell
+python -m cmo_db_inspector.start_app YOUR_DATA_FOLDER
+```
+
+For example:
+
+```shell
+python -m cmo_db_inspector.start_app "D:\SteamLibrary\steamapps\common\Command - Modern Operations\DB"
+```
+
+Open something like `http://127.0.0.1:7860` (will be prompted in the output from the above command) to use the app.
+
+(Tested on Python 3.10, 3.12)
+
 ## Radar
 
 ### Radar Detection Range

@@ -9,8 +9,9 @@ authors = [
 ]
 
 dependencies = [
-  "gradio",
+  "gradio<4.0.0",
   "plotly",
+  "numpy<2.0.0",
   "sqlalchemy<2.0.0",
   "pandas<2.0.0"
 ]
